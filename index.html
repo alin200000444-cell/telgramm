@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Личные диалоги</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="messenger-container">
+        <div class="sidebar">
+            <div class="sidebar-header">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <img id="my-avatar" src="" style="width:30px; height:30px; border-radius:50%; object-fit:cover; display:none;">
+                    <span id="user-display">Вы: ...</span>
+                </div>
+                <a href="/logout" class="logout-btn">Выйти</a>
+            </div>
+            <ul id="users-list"></ul>
+        </div>
+
+        <div class="chat-area">
+            <div class="chat-header" id="chat-header-title">Выберите собеседника из списка слева</div>
+            <ul id="messages"></ul>
+            <form id="form" action="" style="display: none;">
+                <input id="input" autocomplete="off" placeholder="Напишите сообщение..." />
+                <button>Отправить</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+        let currentUsername = '';
+        let activeChatUser = null;
+        let socket = null;
+
+        fetch('/get-user')
+            .then(res => {
+                if (res.status === 401) window.location.href = '/login.html';
+                return res.json();
+            })
+            .then(data => {
+                currentUsername = data.username;
+                document.getElementById('user-display').textContent = currentUsername;
+                const myAvatar = document.getElementById('my-avatar');
+                myAvatar.src = data.avatar;
+                myAvatar.style.display = 'block';
+                initMessenger();
+            });
+
+        function initMessenger() {
+            socket = io();
+            const form = document.getElementById('form');
+            const input = document.getElementById('input');
+            const messages = document.getElementById('messages');
+            const usersList = document.getElementById('users-list');
+            const chatHeaderTitle = document.getElementById('chat-header-title');
+
+            socket.emit('get users list');
+
+            socket.on('update users', () => {
+                socket.emit('get users list');
+            });
+
+// Отрисовка списка людей слева с красивыми аватарками
+socket.on('users list', (users) => {
+    usersList.innerHTML = '';
+    if (users.length === 0) {
+        usersList.innerHTML = '<li class="no-users">Кроме вас пока никого нет</li>';
+        return;
+    }
+    
+    users.forEach(user => {
+        const li = document.createElement('li');
+        
+        // Создаем аватарку и вешаем на нее новый красивый класс
+        const img = document.createElement('img');
+        img.src = user.avatar;
+        img.classList.add('user-avatar-modern');
+
+        // Контейнер для текста, чтобы имя не прижималось к фото
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = user.username;
+        nameSpan.style.fontSize = '15px';
+        nameSpan.style.fontWeight = '500';
+
+        li.appendChild(img);
+        li.appendChild(nameSpan);
+        
+        if (activeChatUser === user.username) li.classList.add('active');
+        
+        // Клик по пользователю
+        li.addEventListener('click', () => {
+            activeChatUser = user.username;
+            document.querySelectorAll('#users-list li').forEach(el => el.classList.remove('active'));
+            li.classList.add('active');
+
+            // Обновляем шапку чата: аватарка теперь тоже круглая и с рамкой
+            chatHeaderTitle.innerHTML = `
+                <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
+                    <img src="${user.avatar}" class="chat-header-avatar">
+                    <span style="font-size: 16px; color: #2c3e50;">Диалог с: <strong>${activeChatUser}</strong></span>
+                </div>
+            `;
+            
+            form.style.display = 'flex';
+            socket.emit('get chat history', activeChatUser);
+        });
+        usersList.appendChild(li);
+    });
+});
+
+            socket.on('load history', (history) => {
+                messages.innerHTML = '';
+                history.forEach(appendMessage);
+            });
+
+            socket.on('chat message', (data) => {
+                if ((data.sender === activeChatUser && data.receiver === currentUsername) || 
+                    (data.sender === currentUsername && data.receiver === activeChatUser)) {
+                    appendMessage(data);
+                } else {
+                    document.querySelectorAll('#users-list li').forEach(li => {
+                        if (li.querySelector('span').textContent.trim() === data.sender) {
+                            li.style.backgroundColor = '#2ecc71';
+                        }
+                    });
+                }
+            });
+
+            function appendMessage(data) {
+                const item = document.createElement('li');
+                if (data.sender === currentUsername) {
+                    item.classList.add('my-msg');
+                }
+                item.innerHTML = `<strong>${data.sender}:</strong> ${data.text}`;
+                messages.appendChild(item);
+                messages.scrollTop = messages.scrollHeight;
+            }
+
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
+                if (input.value && activeChatUser) {
+                    socket.emit('private message', { to: activeChatUser, text: input.value });
+                    input.value = '';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

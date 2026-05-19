@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вход в мессенджер</title>
+    <style>
+        /* Жесткие изолированные стили, которые заставят форму встать вертикально */
+        body { 
+            margin: 0; 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; 
+            background: #eef2f3; 
+            display: flex !important; 
+            justify-content: center !important; 
+            align-items: center !important; 
+            height: 100vh; 
+        }
+        
+        .login-card-fixed { 
+            background: white; 
+            padding: 40px 30px; 
+            border-radius: 16px; 
+            box-shadow: 0 10px 25px rgba(0,0,0,0.08); 
+            width: 340px; 
+            box-sizing: border-box;
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 20px !important;
+            text-align: center;
+        }
+
+        .login-card-fixed h2 {
+            margin: 0;
+            color: #2c3e50;
+            font-size: 24px;
+        }
+
+        .login-card-fixed form {
+            display: flex !important;
+            flex-direction: column !important;
+            gap: 16px !important; /* Отступы между полями сверху вниз */
+            width: 100% !important;
+            border: none !important;
+            padding: 0 !important;
+            margin: 0 !important;
+            background: none !important;
+        }
+
+        .login-card-fixed input[type="text"],
+        .login-card-fixed input[type="password"] { 
+            width: 100% !important; 
+            padding: 12px 16px !important; 
+            border: 1px solid #dee2e6 !important; 
+            border-radius: 8px !important; 
+            outline: none !important;
+            font-size: 14px !important;
+            box-sizing: border-box !important;
+            display: block !important;
+        }
+
+        .login-card-fixed input:focus {
+            border-color: #3498db !important;
+        }
+
+        .login-btn-fixed { 
+            width: 100% !important; 
+            padding: 14px !important; 
+            border: none !important;
+            border-radius: 8px !important; 
+            background: #2c3e50 !important; 
+            color: white !important;
+            font-size: 16px !important;
+            font-weight: bold !important;
+            cursor: pointer;
+            box-sizing: border-box !important;
+            transition: background 0.2s;
+        }
+
+        .login-btn-fixed:hover { 
+            background: #1a252f !important; 
+        }
+
+        .switch-text { 
+            font-size: 14px; 
+            margin: 0;
+            color: #64748b;
+        }
+
+        .switch-text a {
+            color: #3498db;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        
+        .switch-text a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-card-fixed">
+        <h2>Войти в аккаунт</h2>
+        
+        <form action="/login" method="POST">
+            <input type="text" name="username" placeholder="Имя пользователя" required>
+            <input type="password" name="password" placeholder="Пароль" required>
+            <button type="submit" class="login-btn-fixed">Войти</button>
+        </form>
+        
+        <p class="switch-text">Нет аккаунта? <a href="/register.html">Зарегистрироваться</a></p>
+    </div>
+
+</body>
+</html>
