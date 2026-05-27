@@ -1,10 +1,11 @@
 {
-  "name": "lol",
+  "name": "human-messenger",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "description": "Мессенджер для людей на Electron",
+  "main": "main.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "node server.js",
+    "app": "electron ."
   },
   "keywords": [],
   "author": "",
@@ -14,8 +15,16 @@
     "bcryptjs": "^3.0.3",
     "express": "^5.2.1",
     "express-session": "^1.19.0",
+    "localtunnel": "^2.0.2",
     "multer": "^2.1.1",
     "socket.io": "^4.8.3",
     "sqlite3": "^6.0.1"
+  },
+  "devDependencies": {
+    "electron": "^42.2.0"
+  },
+  "optionalDependencies": {
+    "@cloudflare/kv-asset-handler": "^0.5.0",
+    "localhost.run": "npm:null@*"
   }
 }

@@ -1,0 +1,260 @@
+/* --- Общие стили светлой темы Telegram --- */
+body { 
+    margin: 0; 
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
+    background: #f4f4f5; 
+    display: flex; 
+    justify-content: center; 
+    align-items: center; 
+    height: 100vh; 
+    width: 100vw;
+    overflow: hidden; 
+    color: #000; /* Черный текст по умолчанию */
+}
+
+/* --- Главный контейнер --- */
+.messenger-container { 
+    display: flex; 
+    width: 100vw;       
+    height: 100vh;      
+    background: #ffffff; 
+    overflow: hidden; 
+}
+
+/* --- Боковая панель --- */
+.sidebar { 
+    width: 320px;       
+    min-width: 280px;
+    max-width: 400px;
+    background: #ffffff; 
+    display: flex; 
+    flex-direction: column; 
+    border-right: 1px solid #e4e4e7; /* Светлая разделительная линия */
+}
+
+.sidebar-header { 
+    background: #ffffff; 
+    padding: 15px; 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    font-weight: bold; 
+    font-size: 16px;
+    border-bottom: 1px solid #e4e4e7;
+    color: #222;
+}
+
+.logout-btn { 
+    color: #ef5350; 
+    text-decoration: none; 
+    font-size: 13px; 
+}
+
+#users-list { 
+    list-style: none; 
+    margin: 0; 
+    padding: 8px; 
+    flex-grow: 1; 
+    overflow-y: auto; 
+    display: flex;
+    flex-direction: column;
+    gap: 4px; 
+}
+
+/* Карточки пользователей в списке */
+#users-list li { 
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    padding: 12px !important; 
+    border-radius: 10px !important; 
+    cursor: pointer; 
+    transition: background 0.15s ease; 
+    background: transparent;
+    color: #222;
+}
+
+#users-list li:hover { 
+    background: #f4f4f5 !important; 
+}
+
+#users-list li.active { 
+    background: #3390ec !important; /* Классический лазурный цвет TG */
+    color: #ffffff !important;
+}
+
+/* --- Стили для аватарок --- */
+.user-avatar-modern {
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 50% !important; 
+    object-fit: cover !important; 
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1) !important;
+}
+
+/* --- Область чата со светлым фоновым рисунком --- */
+.chat-area { 
+    flex-grow: 1;       
+    display: flex; 
+    flex-direction: column; 
+    background-color: #f4f4f5;
+    /* Изящный светлый паттерн на фоне переписки */
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://w3.org' width='80' height='80' viewBox='0 0 80 80'%3E%3Cg fill='%233390ec' fill-opacity='0.04'%3E%3Cpath fill-rule='evenodd' d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm1-61c3.148 0 5.7-2.552 5.7-5.7 0-3.148-2.552-5.7-5.7-5.7-3.148 0-5.7 2.552-5.7 5.7 0 3.148 2.552 5.7 5.7 5.7zm4 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z'/%3E%3C/g%3E%3C/svg%3E");
+}
+
+.chat-header { 
+    background: #ffffff; 
+    padding: 14px 20px; 
+    font-weight: bold; 
+    border-bottom: 1px solid #e4e4e7; 
+    color: #222; 
+    display: flex;
+    align-items: center;
+}
+
+.chat-header-avatar {
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    object-fit: cover !important;
+}
+
+/* --- Окно сообщений --- */
+#messages { 
+    list-style-type: none; 
+    margin: 0; 
+    padding: 20px 40px; 
+    flex-grow: 1; 
+    overflow-y: auto; 
+    display: flex; 
+    flex-direction: column; 
+    gap: 10px; 
+}
+
+/* Входящие сообщения (белые карточки) */
+#messages li { 
+    padding: 10px 14px; 
+    background: #ffffff; 
+    color: #000000;
+    border-radius: 12px 12px 12px 3px; 
+    max-width: 550px; 
+    align-self: flex-start; 
+    box-shadow: 0 1px 2px rgba(0,0,0,0.07); 
+    word-break: break-word; 
+    line-height: 1.4;
+    border: none;
+}
+
+/* Исходящие сообщения (нежно-зеленый оттенок TG) */
+#messages li.my-msg { 
+    background: #eeffde; 
+    border-radius: 12px 12px 3px 12px; 
+    align-self: flex-end; 
+    box-shadow: 0 1px 2px rgba(0,0,0,0.07); 
+}
+
+/* Стилизация никнеймов над текстом */
+#messages li strong {
+    color: #0672b7; /* Красивый синий цвет автора текста */
+    display: block;
+    margin-bottom: 3px;
+    font-size: 13.5px;
+}
+#messages li.my-msg strong {
+    color: #438f2a; /* Зеленый цвет для вашего собственного имени */
+}
+
+/* --- Нижная панель ввода текста --- */
+.chat-area form { 
+    display: flex; 
+    padding: 15px 30px; 
+    background: #ffffff; 
+    border-top: 1px solid #e4e4e7; 
+    align-items: center;
+}
+
+.chat-area input { 
+    flex-grow: 1; 
+    border: 1px solid #e4e4e7; 
+    background: #f4f4f5; 
+    color: #000;
+    padding: 12px 20px; 
+    border-radius: 12px; 
+    outline: none; 
+    font-size: 15px; 
+}
+
+.chat-area input::placeholder {
+    color: #a1a1aa;
+}
+
+.chat-area button { 
+    background: transparent; 
+    color: #3390ec; 
+    border: none; 
+    padding: 10px 20px; 
+    margin-left: 10px; 
+    cursor: pointer; 
+    font-weight: bold; 
+    font-size: 15px;
+    transition: color 0.15s;
+}
+
+.chat-area button:hover { 
+    color: #1a73cc; 
+}
+/* Стили для смайликов-картинок внутри сообщений */
+.chat-emoji {
+    width: 22px !important;
+    height: 22px !important;
+    display: inline-block !important;
+    vertical-align: -4px !important;
+    margin: 0 2px !important;
+    object-fit: contain !important;
+}
+
+/* Элементы смайликов внутри всплывающей панели выбора */
+.emoji-list img {
+    width: 26px !important;
+    height: 26px !important;
+    cursor: pointer;
+    transition: transform 0.1s ease;
+}
+
+.emoji-list img:hover {
+    transform: scale(1.2); /* Смайлик немного увеличивается при наведении */
+}
+
+}
+/* Кнопка удаления сообщения для админа */
+.delete-msg-btn {
+    background: none !important;
+    border: none !important;
+    color: #ef5350 !important;
+    font-size: 11px !important;
+    cursor: pointer;
+    margin-left: 10px;
+    padding: 0 !important;
+    display: inline !important;
+    opacity: 0.5;
+}
+.delete-msg-btn:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+/* Кнопка бана в списке пользователей */
+.ban-user-btn {
+    background: #ef5350 !important;
+    color: white !important;
+    border: none !important;
+    padding: 4px 8px !important;
+    border-radius: 6px !important;
+    font-size: 11px !important;
+    cursor: pointer;
+    margin-left: auto; /* Сдвигает кнопку в самый правый край ячейки */
+}
+.ban-user-btn:hover {
+    background: #d32f2f !important;
+}
