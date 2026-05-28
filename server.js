@@ -58,9 +58,9 @@ db.serialize(() => {
 // --- Middleware (Промежуточное ПО) ---
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public')); // Раздача статики (HTML, CSS, JS) из папки public
+app.use(express.static(path.join(__dirname, 'public'))); // Раздача статики (HTML, CSS, JS)
 
-// Настройка сессий
+// Настройка сессий (должна быть ПЕРЕД корневым роутом)
 const sessionMiddleware = session({
     secret: 'super-secret-key-human-messenger',
     resave: false,
@@ -71,6 +71,17 @@ app.use(sessionMiddleware);
 
 // Делимся сессией Express с Socket.io
 io.engine.use(sessionMiddleware);
+
+// --- Корневой роут (Перенаправление на регистрацию) ---
+app.get('/', (req, res) => {
+    // Если пользователь авторизован — отдаем главный чат
+    if (req.session && req.session.user) {
+        res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    } else {
+        // Если не авторизован — самой первой открывается РЕГИСТРАЦИЯ
+        res.sendFile(path.join(__dirname, 'public', 'register.html'));
+    }
+});
 
 // --- Роуты авторизации (API) ---
 
@@ -123,7 +134,7 @@ app.post('/login', (req, res) => {
     });
 });
 
-// 3. Получение списка активных пользователей для сайдбара
+// 3. Получение списка пользователей для сайдбара
 app.get('/get-users', (req, res) => {
     db.all(`SELECT username, avatar, role FROM users`, [], (err, rows) => {
         if (err) return res.status(500).json({ message: 'Ошибка загрузки пользователей' });
@@ -133,7 +144,6 @@ app.get('/get-users', (req, res) => {
 
 // --- Работа с WebSockets (Socket.io) ---
 io.on('connection', (socket) => {
-    // Получаем сессию текущего подключения
     const req = socket.request;
     const sessionUser = req.session ? req.session.user : null;
 
@@ -142,18 +152,16 @@ io.on('connection', (socket) => {
     // При подключении отправляем историю последних 50 сообщений
     db.all(`SELECT * FROM messages ORDER BY id DESC LIMIT 50`, [], (err, rows) => {
         if (!err) {
-            // Разворачиваем сообщения в хронологический порядок перед отправкой
             socket.emit('chat-history', rows.reverse());
         }
     });
 
     // Обработка отправки нового сообщения
     socket.on('send-message', (msgText) => {
-        if (!sessionUser) return; // Если не авторизован — игнорируем
+        if (!sessionUser) return;
 
         db.run(`INSERT INTO messages (username, text) VALUES (?, ?)`, [sessionUser.username, msgText], function(err) {
             if (!err) {
-                // Рассылаем сообщение ВСЕМ подключенным пользователям
                 io.emit('new-message', {
                     id: this.lastID,
                     username: sessionUser.username,
@@ -166,7 +174,7 @@ io.on('connection', (socket) => {
 
     // Обработка удаления сообщения (для администратора)
     socket.on('delete-message', (msgId) => {
-        if (!sessionUser || sessionUser.role !== 'admin') return; // Только админ может удалять
+        if (!sessionUser || sessionUser.role !== 'admin') return;
 
         db.run(`DELETE FROM messages WHERE id = ?`, [msgId], (err) => {
             if (!err) {
