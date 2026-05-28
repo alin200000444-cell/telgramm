@@ -3,28 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Личные диалоги</title>
+    <title>Мессенджер Telegram Style</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div class="messenger-container">
         <div class="sidebar">
             <div class="sidebar-header">
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <img id="my-avatar" src="" style="width:30px; height:30px; border-radius:50%; object-fit:cover; display:none;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <img id="my-avatar" src="" style="width:34px; height:34px; border-radius:50%; object-fit:cover; display:none;">
                     <span id="user-display">Вы: ...</span>
                 </div>
                 <a href="/logout" class="logout-btn">Выйти</a>
             </div>
             <ul id="users-list"></ul>
         </div>
-
         <div class="chat-area">
-            <div class="chat-header" id="chat-header-title">Выберите собеседника из списка слева</div>
+            <div class="chat-header" id="chat-header-title">Выберите чат или собеседника слева</div>
             <ul id="messages"></ul>
-            <form id="form" action="" style="display: none;">
-                <input id="input" autocomplete="off" placeholder="Напишите сообщение..." />
-                <button>Отправить</button>
+            <form id="form" action="" style="display: none; position: relative;">
+                <button type="button" id="emoji-btn" style="background: none; color: #3390ec; margin: 0 5px; padding: 0; width: auto; cursor: pointer; font-size: 22px; border: none; outline: none;">😊</button>
+                
+                <input id="input" autocomplete="off" placeholder="Написать сообщение..." />
+                <button type="submit">Отправить</button>
+                <div id="emoji-picker" style="display: none; position: absolute; bottom: 70px; left: 20px; background: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); width: 340px; height: 280px; overflow-y: auto; padding: 12px; z-index: 1000; box-sizing: border-box;">
+                    <div style="font-size: 12px; color: #a1a1aa; margin-bottom: 8px; font-weight: bold; text-align: left;">Ваши эмодзи и мемы</div>
+                    <div class="emoji-list" id="custom-emojis-container">
+                    </div>
+                </div>
             </form>
         </div>
     </div>
@@ -34,20 +40,36 @@
         let currentUsername = '';
         let activeChatUser = null;
         let socket = null;
+        let customEmojisList = []; 
 
-        fetch('/get-user')
-            .then(res => {
-                if (res.status === 401) window.location.href = '/login.html';
-                return res.json();
-            })
-            .then(data => {
-                currentUsername = data.username;
-                document.getElementById('user-display').textContent = currentUsername;
-                const myAvatar = document.getElementById('my-avatar');
-                myAvatar.src = data.avatar;
-                myAvatar.style.display = 'block';
-                initMessenger();
+
+        function convertCustomEmojis(text) {
+            let result = text;
+            if (!customEmojisList || customEmojisList.length === 0) return result;
+            
+            customEmojisList.forEach(fileName => {
+                const shortcode = `:${fileName}:`;
+                if (result.includes(shortcode)) {
+                    const imgTag = `<img src="/emojis/${fileName}" style="width:24px; height:24px; display:inline-block; vertical-align:-5px; margin:0 2px; object-fit:contain;">`;
+                    result = result.split(shortcode).join(imgTag);
+                }
             });
+            return result;
+        }
+        Promise.all([
+            fetch('/get-user').then(res => res.status === 401 ? window.location.href = '/login.html' : res.json()),
+            fetch('/get-custom-emojis').then(res => res.json())
+        ]).then(([userData, emojisData]) => {
+            currentUsername = userData.username;
+            document.getElementById('user-display').textContent = currentUsername;
+            
+            const myAvatar = document.getElementById('my-avatar');
+            myAvatar.src = userData.avatar;
+            myAvatar.style.display = 'block';
+
+            customEmojisList = emojisData; 
+            initMessenger();
+        }).catch(err => console.error("Ошибка загрузки:", err));
 
         function initMessenger() {
             socket = io();
@@ -56,60 +78,133 @@
             const messages = document.getElementById('messages');
             const usersList = document.getElementById('users-list');
             const chatHeaderTitle = document.getElementById('chat-header-title');
+            
+            const emojiBtn = document.getElementById('emoji-btn');
+            const emojiPicker = document.getElementById('emoji-picker');
+            const customEmojisContainer = document.getElementById('custom-emojis-container');
+            customEmojisContainer.innerHTML = '';
+            if (!customEmojisList || customEmojisList.length === 0) {
+                customEmojisContainer.innerHTML = '<div style="font-size:12px; color:#a1a1aa; width:100%; text-align:left;">Папка public/emojis пуста. Закиньте туда фото!</div>';
+            } else {
+                customEmojisContainer.style.display = 'grid';
+                customEmojisContainer.style.gridTemplateColumns = 'repeat(auto-fill, minmax(60px, 1fr))';
+                customEmojisContainer.style.gap = '10px';
+                customEmojisContainer.style.width = '100%';
 
-            socket.emit('get users list');
+                customEmojisList.forEach(fileName => {
+                    const img = document.createElement('img');
+                    img.src = `/emojis/${fileName}`;
+                    img.style.setProperty('width', '60px', 'important');
+                    img.style.setProperty('height', '60px', 'important');
+                    img.style.cursor = 'pointer';
+                    img.style.objectFit = 'contain';
+                    img.style.borderRadius = '6px';
+                    img.style.transition = 'transform 0.15s ease';
+                    img.title = fileName;
+                    
+                    img.addEventListener('mouseenter', () => img.style.setProperty('transform', 'scale(1.1)', 'important'));
+                    img.addEventListener('mouseleave', () => img.style.setProperty('transform', 'scale(1.0)', 'important'));
 
-            socket.on('update users', () => {
-                socket.emit('get users list');
+                    img.addEventListener('click', () => {
+                        if (activeChatUser) {
+                            socket.emit('private message', { to: activeChatUser, text: `:${fileName}:` });
+                            emojiPicker.style.display = 'none';
+                        }
+                    });
+                    customEmojisContainer.appendChild(img);
+                });
+            }
+
+            // Открытие / закрытие панели смайликов
+            emojiBtn.addEventListener('click', (e) => {
+                e.stopPropagation();
+                emojiPicker.style.display = emojiPicker.style.display === 'none' ? 'block' : 'none';
             });
 
-// Отрисовка списка людей слева с красивыми аватарками
-socket.on('users list', (users) => {
-    usersList.innerHTML = '';
-    if (users.length === 0) {
-        usersList.innerHTML = '<li class="no-users">Кроме вас пока никого нет</li>';
-        return;
-    }
-    
-    users.forEach(user => {
-        const li = document.createElement('li');
-        
-        // Создаем аватарку и вешаем на нее новый красивый класс
-        const img = document.createElement('img');
-        img.src = user.avatar;
-        img.classList.add('user-avatar-modern');
+            document.addEventListener('click', () => { emojiPicker.style.display = 'none'; });
+            emojiPicker.addEventListener('click', (e) => { e.stopPropagation(); });
 
-        // Контейнер для текста, чтобы имя не прижималось к фото
-        const nameSpan = document.createElement('span');
-        nameSpan.textContent = user.username;
-        nameSpan.style.fontSize = '15px';
-        nameSpan.style.fontWeight = '500';
+            socket.emit('get users list');
+            socket.on('update users', () => socket.emit('get users list'));
 
-        li.appendChild(img);
-        li.appendChild(nameSpan);
-        
-        if (activeChatUser === user.username) li.classList.add('active');
-        
-        // Клик по пользователю
-        li.addEventListener('click', () => {
-            activeChatUser = user.username;
-            document.querySelectorAll('#users-list li').forEach(el => el.classList.remove('active'));
-            li.classList.add('active');
+            // Загрузка контактов слева
+            socket.on('users list', (users) => {
+                usersList.innerHTML = '';
+                users.forEach(user => {
+                    const li = document.createElement('li');
+                    
+                    const img = document.createElement('img');
+                    img.src = user.avatar;
+                    img.classList.add('user-avatar-modern');
 
-            // Обновляем шапку чата: аватарка теперь тоже круглая и с рамкой
-            chatHeaderTitle.innerHTML = `
-                <div style="display:flex; align-items:center; justify-content:center; gap:12px;">
-                    <img src="${user.avatar}" class="chat-header-avatar">
-                    <span style="font-size: 16px; color: #2c3e50;">Диалог с: <strong>${activeChatUser}</strong></span>
-                </div>
-            `;
-            
-            form.style.display = 'flex';
-            socket.emit('get chat history', activeChatUser);
-        });
-        usersList.appendChild(li);
-    });
-});
+                    const nameSpan = document.createElement('span');
+                    nameSpan.textContent = user.username;
+                    nameSpan.style.fontSize = '15px';
+                    nameSpan.style.fontWeight = '500';
+
+                    li.appendChild(img);
+                    li.appendChild(nameSpan);
+
+                    // Кнопка БАНА для админа
+                    if (currentUsername === 'VADMIN') {
+                        const banBtn = document.createElement('button');
+                        banBtn.textContent = 'БАН';
+                        banBtn.classList.add('ban-user-btn');
+                        banBtn.addEventListener('click', (e) => {
+                            e.stopPropagation();
+                            if (confirm(`Вы уверены, что хотите НАВСЕГДА забанить ${user.username}?`)) {
+                                socket.emit('admin ban user', user.username);
+                                chatHeaderTitle.textContent = 'Выберите чат или собеседника слева';
+                                document.getElementById('messages').innerHTML = '';
+                                form.style.display = 'none';
+                            }
+                        });
+                        li.appendChild(banBtn);
+                    }
+                    
+                    if (activeChatUser === user.username) li.classList.add('active');
+                    
+                    li.addEventListener('click', () => {
+                        activeChatUser = user.username;
+                        document.querySelectorAll('#users-list li').forEach(el => el.classList.remove('active'));
+                        li.classList.add('active');
+
+                        chatHeaderTitle.innerHTML = `
+                            <div style="display:flex; align-items:center; gap:12px;">
+                                <img src="${user.avatar}" class="chat-header-avatar">
+                                <span style="font-size: 16px;"><strong>${activeChatUser}</strong></span>
+                            </div>
+                        `;
+                        form.style.display = 'flex';
+                        socket.emit('get chat history', activeChatUser);
+                    });
+                    usersList.appendChild(li);
+                });
+            });
+
+            // Команды бана и удаления
+            socket.on('you are banned', () => {
+                alert('Вы были забанены администратором VADMIN!');
+                window.location.href = '/logout';
+            });
+
+            socket.on('message deleted', (msgId) => {
+                const msgEl = document.getElementById(`msg-${msgId}`);
+                if (msgEl) {
+                    msgEl.style.opacity = '0.3';
+                    msgEl.innerHTML = '<em>Сообщение удалено администратором VADMIN</em>';
+                }
+            });
+
+            socket.on('user completely removed', (bannedUser) => {
+                socket.emit('get users list');
+                if (activeChatUser === bannedUser) {
+                    activeChatUser = null;
+                    document.getElementById('chat-header-title').textContent = 'Выберите чат или собеседника слева';
+                    document.getElementById('messages').innerHTML = '';
+                    form.style.display = 'none';
+                }
+            });
 
             socket.on('load history', (history) => {
                 messages.innerHTML = '';
@@ -120,21 +215,73 @@ socket.on('users list', (users) => {
                 if ((data.sender === activeChatUser && data.receiver === currentUsername) || 
                     (data.sender === currentUsername && data.receiver === activeChatUser)) {
                     appendMessage(data);
-                } else {
-                    document.querySelectorAll('#users-list li').forEach(li => {
-                        if (li.querySelector('span').textContent.trim() === data.sender) {
-                            li.style.backgroundColor = '#2ecc71';
-                        }
-                    });
                 }
             });
 
+            // Функция отрисовки сообщений
             function appendMessage(data) {
                 const item = document.createElement('li');
+                item.id = `msg-${data.id}`;
+                
                 if (data.sender === currentUsername) {
                     item.classList.add('my-msg');
                 }
-                item.innerHTML = `<strong>${data.sender}:</strong> ${data.text}`;
+
+                // ВРЕМЯ
+                const date = data.timestamp ? new Date(data.timestamp) : new Date();
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                const timeString = `${hours}:${minutes}`;
+
+                const trimmedText = String(data.text).trim();
+                const isSingleEmoji = /^:[^:]+:$/.test(trimmedText);
+                
+                if (isSingleEmoji) {
+                    const fileName = trimmedText.replace(/:/g, '');
+                    if (customEmojisList.includes(fileName)) {
+                        item.style.background = 'none'; item.style.boxShadow = 'none'; item.style.border = 'none'; item.style.padding = '0';
+                        item.style.position = 'relative';
+                        
+                        item.innerHTML = `
+                            <div style="position: relative; display: inline-block;">
+                                <img src="/emojis/${fileName}" style="width: 200px; height: auto; border-radius: 12px; display: block; object-fit: contain;">
+                                <span style="position: absolute; bottom: 8px; right: 10px; background: rgba(0,0,0,0.5); color: white; padding: 2px 6px; border-radius: 10px; font-size: 11px;">${timeString}</span>
+                            </div>
+                        `;
+                        
+                        if (currentUsername === 'VADMIN') {
+                            const delBtn = document.createElement('button');
+                            delBtn.textContent = 'Удалить мем';
+                            delBtn.classList.add('delete-msg-btn');
+                            delBtn.style.display = 'block';
+                            delBtn.addEventListener('click', () => socket.emit('admin delete message', data.id));
+                            item.appendChild(delBtn);
+                        }
+                        
+                        messages.appendChild(item);
+                        messages.scrollTop = messages.scrollHeight;
+                        return; 
+                    }
+                }
+
+                // ОБЫЧНЫЙ ТЕКСТ
+                const processedText = convertCustomEmojis(data.text);
+                item.innerHTML = `
+                    <strong>${data.sender}</strong>
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <span>${processedText}</span>
+                        <span style="font-size: 10px; color: #a1a1aa; align-self: flex-end; margin-top: 2px; user-select: none;">${timeString}</span>
+                    </div>
+                `;
+                
+                if (currentUsername === 'VADMIN') {
+                    const delBtn = document.createElement('button');
+                    delBtn.textContent = '✖';
+                    delBtn.classList.add('delete-msg-btn');
+                    delBtn.addEventListener('click', () => socket.emit('admin delete message', data.id));
+                    item.appendChild(delBtn);
+                }
+
                 messages.appendChild(item);
                 messages.scrollTop = messages.scrollHeight;
             }
