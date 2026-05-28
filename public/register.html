@@ -132,7 +132,8 @@
     <div class="new-auth-card">
         <h2>Создать профиль</h2>
         
-        <form action="/register" method="POST" enctype="multipart/form-data">
+        <!-- Убрали action и method, добавили id для JS обработки -->
+        <form id="registerForm" enctype="multipart/form-data">
             <!-- Поля ввода -->
             <input type="text" name="username" placeholder="Придумайте имя" required>
             <input type="password" name="password" placeholder="Придумайте пароль" required>
@@ -154,10 +155,45 @@
     </div>
 
     <script>
-        // Код для обновления названия файла при выборе
-        document.getElementById('avatar-file').addEventListener('change', function() {
+        const fileInput = document.getElementById('avatar-file');
+        const fileNameText = document.getElementById('file-name-text');
+        const registerForm = document.getElementById('registerForm');
+
+        // 1. Код для обновления названия файла при выборе на компьютере/телефоне
+        fileInput.addEventListener('change', function() {
             const labelText = this.files.length > 0 ? this.files[0].name : 'Файл не выбран';
-            document.getElementById('file-name-text').textContent = labelText;
+            fileNameText.textContent = labelText;
+        });
+
+        // 2. Асинхронная AJAX отправка формы на ваш Node.js бэкенд
+        registerForm.addEventListener('submit', async function(event) {
+            event.preventDefault(); // Останавливаем перезагрузку страницы браузером
+
+            // Автоматически собираем все данные из формы (текст и файлы)
+            const formData = new FormData(registerForm);
+
+            // !!! ВНИМАНИЕ: Замените этот URL на адрес вашего реального бэкенда !!!
+            const BACKEND_URL = 'https://xn-----6kcfcemhcb3cxb4bck8hyd.com'; 
+
+            try {
+                const response = await fetch(BACKEND_URL, {
+                    method: 'POST',
+                    body: formData // Передаем объект FormData в теле запроса
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    alert('Регистрация прошла успешно!');
+                    window.location.href = '/login.html'; // Перенаправление на страницу логина
+                } else {
+                    // Обработка ошибок, если бэкенд вернул код 400, 409, 500 и т.д.
+                    const errorData = await response.json();
+                    alert('Ошибка: ' + (errorData.message || 'Не удалось зарегистрироваться'));
+                }
+            } catch (error) {
+                console.error('Ошибка сети:', error);
+                alert('Не удалось подключиться к серверу. Убедитесь, что бэкенд запущен и включен CORS.');
+            }
         });
     </script>
 

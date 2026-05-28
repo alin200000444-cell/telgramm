@@ -102,7 +102,8 @@
     <div class="login-card-fixed">
         <h2>Войти в аккаунт</h2>
         
-        <form action="/login" method="POST">
+        <!-- Убрали action и method, добавили id для JS перехвата -->
+        <form id="loginForm">
             <input type="text" name="username" placeholder="Имя пользователя" required>
             <input type="password" name="password" placeholder="Пароль" required>
             <button type="submit" class="login-btn-fixed">Войти</button>
@@ -110,6 +111,56 @@
         
         <p class="switch-text">Нет аккаунта? <a href="/register.html">Зарегистрироваться</a></p>
     </div>
+
+    <script>
+        const loginForm = document.getElementById('loginForm');
+
+        // Асинхронная AJAX отправка данных для входа
+        loginForm.addEventListener('submit', async function(event) {
+            event.preventDefault(); // Останавливаем перезагрузку страницы браузером
+
+            // Собираем данные полей формы
+            const usernameInput = loginForm.querySelector('input[name="username"]').value;
+            const passwordInput = loginForm.querySelector('input[name="password"]').value;
+
+            // !!! ВНИМАНИЕ: Замените этот URL на адрес вашего реального бэкенда !!!
+            const BACKEND_URL = 'https://xn-----6kcfcemhcb3cxb4bck8hyd.com'; 
+
+            try {
+                const response = await fetch(BACKEND_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json' // Отправляем данные в JSON формате
+                    },
+                    body: JSON.stringify({
+                        username: usernameInput,
+                        password: passwordInput
+                    })
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Если бэкенд возвращает JWT-токен или сессию, сохраняем их в localStorage
+                    if (data.token) {
+                        localStorage.setItem('authToken', data.token);
+                    }
+                    if (data.username) {
+                        localStorage.setItem('currentUsername', data.username);
+                    }
+
+                    alert('Вход выполнен успешно!');
+                    window.location.href = '/index.html'; // Перенаправление на главную страницу чата
+                } else {
+                    const errorData = await response.json();
+                    alert('Ошибка входа: ' + (errorData.message || 'Неверное имя пользователя или пароль'));
+                }
+            } catch (error) {
+                console.error('Ошибка сети:', error);
+                alert('Не удалось подключиться к серверу. Убедитесь, что бэкенд запущен и включен CORS.');
+            }
+        });
+    </script>
 
 </body>
 </html>
