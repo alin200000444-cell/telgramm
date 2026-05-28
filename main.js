@@ -1,8 +1,11 @@
 const { app, BrowserWindow, dialog, clipboard } = require('electron');
 const path = require('path');
-const localtunnel = require('localtunnel'); // Подключаем встроенный туннель
+const localtunnel = require('localtunnel'); 
 
-// Запускаем наш сервер в фоне
+// Переменная для хранения ссылки туннеля, чтобы показать её при создании окна
+let globalTunnelUrl = null;
+
+// Запускаем наш бэкенд-сервер в фоне
 require('./server.js'); 
 
 function createWindow () {
@@ -12,44 +15,66 @@ function createWindow () {
     autoHideMenuBar: true, 
     icon: path.join(__dirname, 'public/favicon.ico'),
     webPreferences: {
-      nodeIntegration: false
+      nodeIntegration: false,
+      contextIsolation: true // Включаем для безопасности, раз подключаемся из интернета
     }
   });
 
   // Загружаем наш мессенджер
   win.loadURL('http://localhost:3000');
 
-  // Включаем автоматический туннель для друга из другого города
-  win.webContents.on('did-finish-load', async () => {
-    try {
-      // Открываем порт 3000 для всего интернета
-      const tunnel = await localtunnel({ port: 3000 });
+  // Если туннель к этому моменту уже успешно запустился, показываем уведомление
+  if (globalTunnelUrl) {
+    showTunnelDialog(win, globalTunnelUrl);
+  } else {
+    // Если туннель еще создается, подождем и покажем окно чуть позже
+    app.once('tunnel-ready', (url) => {
+      if (!win.isDestroyed()) {
+        showTunnelDialog(win, url);
+      }
+    });
+  }
+}
 
-      // tunnel.url — это готовая секретная ссылка (например, https://localtha.net)
-      console.log('Ссылка для друга:', tunnel.url);
-
-      // Автоматически копируем эту ссылку в ваш буфер обмена, чтобы не искать её
-      clipboard.writeText(tunnel.url);
-
-      // Показываем красивое всплывающее окошко прямо в программе
-      dialog.showMessageBox(win, {
-        type: 'info',
-        title: 'Мессенджер готов!',
-        message: `Ссылка для друга из другого города создана и автоматически скопирована в буфер обмена!\n\nПросто отправь её ему в Telegram/VK.\n\nСсылка: ${tunnel.url}`,
-        buttons: ['Отлично, скопировано']
-      });
-
-      tunnel.on('close', () => {
-        console.log('Туннель закрыт');
-      });
-
-    } catch (err) {
-      console.error('Ошибка создания туннеля:', err);
-    }
+// Вынесли создание диалогового окна в отдельную функцию, чтобы не дублировать код
+function showTunnelDialog(window, url) {
+  clipboard.writeText(url);
+  dialog.showMessageBox(window, {
+    type: 'info',
+    title: 'Мессенджер готов!',
+    message: `Ссылка для друга из другого города создана и автоматически скопирована в буфер обмена!\n\nПросто отправь её ему в Telegram/VK.\n\nСсылка: ${url}`,
+    buttons: ['Отлично, скопировано']
   });
 }
 
-app.whenReady().then(() => {
+// Функция инициализации локального туннеля
+async function startTunnel() {
+  try {
+    // Даем серверу server.js 500мс на гарантированный запуск и подъем порта
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    // Открываем порт 3000 для всего интернета (создается ОДИН раз при запуске приложения)
+    const tunnel = await localtunnel({ port: 3000 });
+    globalTunnelUrl = tunnel.url;
+    console.log('Ссылка для друга:', globalTunnelUrl);
+
+    // Оповещаем приложение, что туннель готов
+    app.emit('tunnel-ready', globalTunnelUrl);
+
+    tunnel.on('close', () => {
+      console.log('Туннель закрыт');
+    });
+
+  } catch (err) {
+    console.error('Ошибка создания туннеля:', err);
+  }
+}
+
+app.whenReady().then(async () => {
+  // Сначала запускаем туннель в фоне
+  await startTunnel();
+  
+  // Затем создаем графическое окно
   createWindow();
 
   app.on('activate', () => {

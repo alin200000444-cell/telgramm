@@ -3,9 +3,10 @@
   "version": "1.0.0",
   "description": "Мессенджер для людей на Electron",
   "main": "main.js",
-  "scripts": {
-    "start": "node server.js",
-  },
+"scripts": {
+  "start": "node server.js"
+}
+
   "keywords": [],
   "author": "",
   "license": "ISC",
@@ -20,10 +21,9 @@
     "sqlite3": "^6.0.1"
   },
   "devDependencies": {
-    "electron": "^42.2.0"
+    "electron": "^31.3.1"
   },
   "optionalDependencies": {
-    "@cloudflare/kv-asset-handler": "^0.5.0",
-    "localhost.run": "npm:null@*"
+    "@cloudflare/kv-asset-handler": "^0.5.0"
   }
 }

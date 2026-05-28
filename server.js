@@ -12,14 +12,16 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// Настройка хранилища для загружаемых аватарок (используем временную папку ОС /tmp для совместимости с облаком)
+const PORT = process.env.PORT || 3000;
+
+// --- Настройка хранения файлов (Аватарки) ---
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        const uploadDir = path.join(__dirname, 'public', 'uploads');
-        if (!fs.existsSync(uploadDir)) {
-            fs.mkdirSync(uploadDir, { recursive: true });
+        const dir = './public/uploads';
+        if (!fs.existsSync(dir)){
+            fs.mkdirSync(dir, { recursive: true });
         }
-        cb(null, uploadDir);
+        cb(null, dir);
     },
     filename: (req, file, cb) => {
         cb(null, Date.now() + path.extname(file.originalname));
@@ -27,175 +29,158 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// Используем базу данных в оперативной памяти, чтобы хостинг не ругался на права записи файлов
-const db = new sqlite3.Database(':memory:', (err) => {
-    if (err) {
-        console.error('Ошибка БД:', err.message);
-    } else {
-        console.log('ℹ️ [БД] База данных успешно запущена в оперативной памяти.');
-    }
+// --- Настройка Базы Данных SQLite ---
+const db = new sqlite3.Database('./database.sqlite', (err) => {
+    if (err) console.error('Ошибка подключения к БД:', err.message);
+    else console.log('Подключено к базе данных SQLite.');
 });
 
-// Создание таблиц пользователей и сообщений + авто-создание админа
-db.serialize(async () => {
-    db.run(`CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, username TEXT UNIQUE, password TEXT, avatar TEXT)`);
-    db.run(`CREATE TABLE IF NOT EXISTS messages(id INTEGER PRIMARY KEY AUTOINCREMENT, sender TEXT, receiver TEXT, text TEXT, timestamp DATETIME DEFAULT CURRENT_TIMESTAMP)`);
+// Создание таблиц при первом запуске
+db.serialize(() => {
+    // Таблица пользователей
+    db.run(`CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT UNIQUE,
+        password TEXT,
+        avatar TEXT,
+        role TEXT DEFAULT 'user'
+    )`);
 
-    const adminUsername = 'VADMIN';
-    const adminPasswordPlain = '123QWEEWQ321';
-    const adminAvatar = 'https://flaticon.com';
-
-    db.get(`SELECT * FROM users WHERE username = ?`, [adminUsername], async (err, row) => {
-        if (!row && !err) {
-            const hashedAdminPassword = await bcrypt.hash(adminPasswordPlain, 10);
-            db.run(`INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)`, [adminUsername, hashedAdminPassword, adminAvatar], (insertErr) => {
-                if (!insertErr) {
-                    console.log(`\n👑 [БД] Аккаунт администратора успешно создан!`);
-                    console.log(`👤 Логин: ${adminUsername}\n🔑 Пароль: ${adminPasswordPlain}\n`);
-                }
-            });
-        } else {
-            console.log(`ℹ️ [БД] Аккаунт админа ${adminUsername} уже существует.`);
-        }
-    });
+    // Таблица сообщений
+    db.run(`CREATE TABLE IF NOT EXISTS messages (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        username TEXT,
+        text TEXT,
+        timestamp DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
 });
 
-const sessionMiddleware = session({
-    secret: 'super-secret-key-123',
-    resave: false,
-    saveUninitialized: false
-});
-
-app.use(sessionMiddleware);
+// --- Middleware (Промежуточное ПО) ---
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-app.use(express.static('public'));
+app.use(express.static('public')); // Раздача статики (HTML, CSS, JS) из папки public
 
-io.use((socket, next) => {
-    sessionMiddleware(socket.request, {}, next);
+// Настройка сессий
+const sessionMiddleware = session({
+    secret: 'super-secret-key-human-messenger',
+    resave: false,
+    saveUninitialized: false,
+    cookie: { maxAge: 24 * 60 * 60 * 1000 } // Сессия на 1 день
 });
+app.use(sessionMiddleware);
 
-// --- API МАРШРУТЫ ---
-app.post('/register', upload.single('avatar'), async (req, res) => {
+// Делимся сессией Express с Socket.io
+io.engine.use(sessionMiddleware);
+
+// --- Роуты авторизации (API) ---
+
+// 1. Регистрация нового аккаунта
+app.post('/register', upload.single('avatar'), (req, res) => {
     const { username, password } = req.body;
-    if (!username || !password) return res.status(400).send('Заполните поля');
-    const avatarPath = req.file ? `/uploads/${req.file.filename}` : 'https://flaticon.com';
+    const avatarPath = req.file ? `/uploads/${req.file.filename}` : '/user-avatar-default.png';
 
-    try {
-        const hashedPassword = await bcrypt.hash(password, 10);
-        db.run(`INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)`, [username.trim(), hashedPassword, avatarPath], function (err) {
-            if (err) return res.status(400).send('Пользователь уже существует');
-            res.redirect('/login.html');
-        });
-    } catch (e) {
-        res.status(500).send('Ошибка сервера');
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Заполните все поля' });
     }
+
+    // Хэшируем пароль для безопасности
+    const hashedPassword = bcrypt.hashSync(password, 10);
+
+    db.run(`INSERT INTO users (username, password, avatar) VALUES (?, ?, ?)`, 
+        [username, hashedPassword, avatarPath], 
+        function(err) {
+            if (err) {
+                if (err.message.includes('UNIQUE')) {
+                    return res.status(400).json({ message: 'Это имя пользователя уже занято' });
+                }
+                return res.status(500).json({ message: 'Ошибка базы данных' });
+            }
+            res.status(200).json({ message: 'Регистрация успешна' });
+        }
+    );
 });
 
+// 2. Вход в аккаунт
 app.post('/login', (req, res) => {
     const { username, password } = req.body;
-    db.get(`SELECT * FROM users WHERE username = ?`, [username.trim()], async (err, user) => {
-        if (err || !user) return res.status(400).send('Пользователь не найден');
-        const validPassword = await bcrypt.compare(password, user.password);
-        if (!validPassword) return res.status(400).send('Неверный пароль');
-        req.session.username = user.username;
-        res.redirect('/');
+
+    if (!username || !password) {
+        return res.status(400).json({ message: 'Заполните все поля' });
+    }
+
+    db.get(`SELECT * FROM users WHERE username = ?`, [username], (err, user) => {
+        if (err) return res.status(500).json({ message: 'Ошибка сервера' });
+        if (!user) return res.status(400).json({ message: 'Неверное имя пользователя или пароль' });
+
+        // Проверяем пароль
+        const isMatch = bcrypt.compareSync(password, user.password);
+        if (!isMatch) return res.status(400).json({ message: 'Неверное имя пользователя или пароль' });
+
+        // Сохраняем данные в сессию
+        req.session.user = { id: user.id, username: user.username, role: user.role };
+        
+        res.status(200).json({ message: 'Вход выполнен', username: user.username });
     });
 });
 
-app.get('/get-user', (req, res) => {
-    if (req.session.username) {
-        db.get(`SELECT username, avatar FROM users WHERE username = ?`, [req.session.username], (err, user) => {
-            if (user) res.json(user);
-            else res.status(401).json({ error: 'Не найден' });
-        });
-    } else {
-        res.status(401).json({ error: 'Не авторизован' });
-    }
-});
-
-app.get('/logout', (req, res) => {
-    req.session.destroy();
-    res.redirect('/login.html');
-});
-
-// --- API ДЛЯ СКАНИРОВАНИЯ ПАПКИ СО СМАЙЛИКАМИ ---
-app.get('/get-custom-emojis', (req, res) => {
-    const emojisDir = path.join(__dirname, 'public', 'emojis');
-    if (!fs.existsSync(emojisDir)) {
-        fs.mkdirSync(emojisDir, { recursive: true });
-    }
-    fs.readdir(emojisDir, (err, files) => {
-        if (err) return res.status(500).json({ error: 'Не удалось прочитать папку' });
-        const allowedExtensions = ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg'];
-        const emojiFiles = files.filter(file => allowedExtensions.includes(path.extname(file).toLowerCase()));
-        res.json(emojiFiles);
+// 3. Получение списка активных пользователей для сайдбара
+app.get('/get-users', (req, res) => {
+    db.all(`SELECT username, avatar, role FROM users`, [], (err, rows) => {
+        if (err) return res.status(500).json({ message: 'Ошибка загрузки пользователей' });
+        res.json(rows);
     });
 });
 
-const onlineUsers = new Map();
-
-// --- СВЯЗЬ ЧЕРЕЗ СОКЕТЫ ---
+// --- Работа с WebSockets (Socket.io) ---
 io.on('connection', (socket) => {
-    const username = socket.request.session.username;
-    if (!username) return;
-    onlineUsers.set(username, socket.id);
-    io.emit('updateusers');
+    // Получаем сессию текущего подключения
+    const req = socket.request;
+    const sessionUser = req.session ? req.session.user : null;
 
-    socket.on('getuserslist', () => {
-        db.all(`SELECT username, avatar FROM users WHERE username != ?`, [username], (err, rows) => {
-            if (!err) socket.emit('userslist', rows);
-        });
+    console.log(`Пользователь подключился к сокету: ${sessionUser ? sessionUser.username : 'Аноним'}`);
+
+    // При подключении отправляем историю последних 50 сообщений
+    db.all(`SELECT * FROM messages ORDER BY id DESC LIMIT 50`, [], (err, rows) => {
+        if (!err) {
+            // Разворачиваем сообщения в хронологический порядок перед отправкой
+            socket.emit('chat-history', rows.reverse());
+        }
     });
 
-    socket.on('getchathistory', (chatWith) => {
-        db.all(`SELECT id, sender, receiver, text, timestamp FROM messages WHERE (sender = ? AND receiver = ?) OR (sender = ? AND receiver = ?) ORDER BY id ASC LIMIT 100`, [username, chatWith, chatWith, username], (err, rows) => {
-            if (!err) socket.emit('loadhistory', rows);
-        });
-    });
+    // Обработка отправки нового сообщения
+    socket.on('send-message', (msgText) => {
+        if (!sessionUser) return; // Если не авторизован — игнорируем
 
-    socket.on('privatemessage', ({ to, text }) => {
-        if (!text.trim() || !to) return;
-        db.run(`INSERT INTO messages (sender, receiver, text) VALUES (?, ?, ?)`, [username, to, text], function (err) {
+        db.run(`INSERT INTO messages (username, text) VALUES (?, ?)`, [sessionUser.username, msgText], function(err) {
             if (!err) {
-                const messageData = { id: this.lastID, sender: username, receiver: to, text };
-                socket.emit('chatmessage', messageData);
-                const targetSocketId = onlineUsers.get(to);
-                if (targetSocketId) io.to(targetSocketId).emit('chatmessage', messageData);
-            }
-        });
-    });
-
-    socket.on('admindeletemessage', (msgId) => {
-        if (username !== 'VADMIN') return;
-        db.run(`DELETE FROM messages WHERE id = ?`, [msgId], (err) => {
-            if (!err) io.emit('messagedeleted', msgId);
-        });
-    });
-
-    socket.on('adminbanuser', (targetUser) => {
-        if (username !== 'VADMIN' || targetUser === 'VADMIN') return;
-        const targetSocketId = onlineUsers.get(targetUser);
-        db.run(`DELETE FROM users WHERE username = ?`, [targetUser], (err) => {
-            if (!err) {
-                db.run(`DELETE FROM messages WHERE sender = ? OR receiver = ?`, [targetUser, targetUser], () => {
-                    if (targetSocketId) io.to(targetSocketId).emit('youarebanned');
-                    onlineUsers.delete(targetUser);
-                    io.emit('usercompletelyremoved', targetUser);
+                // Рассылаем сообщение ВСЕМ подключенным пользователям
+                io.emit('new-message', {
+                    id: this.lastID,
+                    username: sessionUser.username,
+                    text: msgText,
+                    timestamp: new Date()
                 });
             }
         });
     });
 
+    // Обработка удаления сообщения (для администратора)
+    socket.on('delete-message', (msgId) => {
+        if (!sessionUser || sessionUser.role !== 'admin') return; // Только админ может удалять
+
+        db.run(`DELETE FROM messages WHERE id = ?`, [msgId], (err) => {
+            if (!err) {
+                io.emit('message-deleted', msgId);
+            }
+        });
+    });
+
     socket.on('disconnect', () => {
-        onlineUsers.delete(username);
+        console.log('Пользователь отключился');
     });
 });
 
-// Автоматическое назначение порта от хостинга (process.env.PORT) или 3000 для локального запуска
-const PORT = process.env.PORT || 3000;
+// Запуск сервера
 server.listen(PORT, () => {
-    console.log(`\n==================================================`);
-    console.log(`🟢 [СЕРВЕР] Успешно запущен глобально на порту: ${PORT}`);
-    console.log(`==================================================\n`);
+    console.log(`Сервер мессенджера запущен по адресу: http://localhost:${PORT}`);
 });
