@@ -4,10 +4,12 @@
   "description": "Мессенджер для людей на Electron и Supabase",
   "main": "main.js",
   "scripts": {
+    "start": "node server.js",
     "start-server": "node server.js",
     "start-electron": "electron .",
     "build-win": "electron-builder --win"
   },
+
   "dependencies": {
     "@capacitor/android": "^8.4.1",
     "@capacitor/cli": "^8.4.1",

@@ -210,9 +210,12 @@ app.post('/api/upload-video', (req, res) => {
   }
 });
 
+// Разрешаем раздачу статических файлов
 app.use(express.static(path.join(__dirname, 'public')));
 
-const PORT = 3000;
-server.listen(PORT, '0.0.0.0', () => {
+// ИСПРАВЛЕНИЕ 1: Динамический порт для Railway + удаление привязки к '0.0.0.0' (Railway настроит это сам)
+const PORT = process.env.PORT || 3000;
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
