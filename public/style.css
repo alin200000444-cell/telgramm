@@ -262,3 +262,106 @@ body {
 .ban-user-btn:hover {
     background: #d32f2f !important;
 }
+
+@media (max-width: 768px) {
+    html, body {
+        position: fixed;
+        overflow: hidden;
+        width: 100%;
+        height: 100%;
+    }
+
+    .messenger-container {
+        position: relative;
+        width: 100vw;
+        height: 100%;
+    }
+
+    .sidebar {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100% !important;
+        max-width: 100% !important;
+        height: 100%;
+        z-index: 10;
+        transition: transform 0.25s ease;
+    }
+
+    .sidebar.hide-mobile {
+        transform: translateX(-100%);
+        pointer-events: none;
+    }
+
+    .chat-area {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 5;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .chat-header {
+        padding: 10px 15px;
+        flex-shrink: 0;
+    }
+
+    .back-to-list-btn {
+        display: inline-flex !important;
+        align-items: center;
+        justify-content: center;
+        background: none !important;
+        border: none !important;
+        color: #3390ec !important;
+        font-size: 24px !important;
+        margin-right: 10px !important;
+        margin-left: 0 !important;
+        padding: 0 5px !important;
+        cursor: pointer;
+    }
+
+    #messages {
+        padding: 15px;
+        flex-grow: 1;
+        overflow-y: auto;
+    }
+
+    #messages li {
+        max-width: 85%;
+        font-size: 14px;
+    }
+
+    .chat-area form {
+        position: relative !important;
+        bottom: auto !important;
+        left: auto !important;
+        width: 100% !important;
+        padding: 10px !important;
+        box-sizing: border-box !important;
+        background: #ffffff !important;
+        gap: 5px !important;
+        flex-shrink: 0;
+    }
+
+    .chat-area input {
+        padding: 10px 15px;
+        font-size: 14px;
+    }
+
+    .chat-area button {
+        padding: 8px 12px;
+        font-size: 14px;
+        margin-left: 0;
+    }
+
+    #emoji-picker {
+        width: calc(100% - 20px) !important;
+        left: 10px !important;
+        bottom: 65px !important;
+    }
+}
+
+

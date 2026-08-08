@@ -112,55 +112,63 @@
         <p class="switch-text">Нет аккаунта? <a href="/register.html">Зарегистрироваться</a></p>
     </div>
 
-    <script>
-        const loginForm = document.getElementById('loginForm');
+<script>
+    const loginForm = document.getElementById('loginForm');
 
-        // Асинхронная AJAX отправка данных для входа
-        loginForm.addEventListener('submit', async function(event) {
-            event.preventDefault(); // Останавливаем перезагрузку страницы браузером
+    function getDeviceFingerprint() {
+        const data = [
+            navigator.userAgent,
+            navigator.language,
+            screen.colorDepth,
+            screen.width + 'x' + screen.height,
+            new Date().getTimezoneOffset(),
+            navigator.hardwareConcurrency || 2
+        ].join('||');
+        
+        let hash = 0;
+        for (let i = 0; i < data.length; i++) {
+            const char = data.charCodeAt(i);
+            hash = (hash << 5) - hash + char;
+            hash |= 0;
+        }
+        return 'dev_' + Math.abs(hash);
+    }
 
-            // Собираем данные полей формы
-            const usernameInput = loginForm.querySelector('input[name="username"]').value;
-            const passwordInput = loginForm.querySelector('input[name="password"]').value;
+    loginForm.addEventListener('submit', async function(event) {
+        event.preventDefault(); 
 
-            // !!! ВНИМАНИЕ: Замените этот URL на адрес вашего реального бэкенда !!!
-            const BACKEND_URL = 'https://xn-----6kcfcemhcb3cxb4bck8hyd.com'; 
+        const usernameInput = loginForm.querySelector('input[name="username"]').value;
+        const passwordInput = loginForm.querySelector('input[name="password"]').value;
+        const deviceId = getDeviceFingerprint();
 
-            try {
-                const response = await fetch(BACKEND_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json' // Отправляем данные в JSON формате
-                    },
-                    body: JSON.stringify({
-                        username: usernameInput,
-                        password: passwordInput
-                    })
-                });
+        try {
+            const response = await fetch('/api/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json' 
+                },
+                body: JSON.stringify({
+                    username: usernameInput,
+                    password: passwordInput,
+                    deviceId: deviceId
+                })
+            });
 
-                if (response.ok) {
-                    const data = await response.json();
-                    
-                    // Если бэкенд возвращает JWT-токен или сессию, сохраняем их в localStorage
-                    if (data.token) {
-                        localStorage.setItem('authToken', data.token);
-                    }
-                    if (data.username) {
-                        localStorage.setItem('currentUsername', data.username);
-                    }
-
-                    alert('Вход выполнен успешно!');
-                    window.location.href = '/index.html'; // Перенаправление на главную страницу чата
-                } else {
-                    const errorData = await response.json();
-                    alert('Ошибка входа: ' + (errorData.message || 'Неверное имя пользователя или пароль'));
-                }
-            } catch (error) {
-                console.error('Ошибка сети:', error);
-                alert('Не удалось подключиться к серверу. Убедитесь, что бэкенд запущен и включен CORS.');
+            if (response.ok) {
+                alert('Вход выполнен успешно!');
+                window.location.href = '/index.html'; 
+            } else {
+                const errorData = await response.json();
+                alert('Ошибка входа: ' + (errorData.message || 'Неверное имя пользователя или пароль'));
             }
-        });
-    </script>
+        } catch (error) {
+            console.error('Ошибка сети:', error);
+            alert('Не удалось подключиться к server.');
+        }
+    });
+</script>
+
+
 
 </body>
 </html>

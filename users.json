@@ -1,0 +1,16 @@
+[
+  {
+    "id": 1,
+    "username": "VADMIN",
+    "password": "39bb64427cab4d1bb41cfa0e21193198:dc15acd88c3cf21a8bb502488929e268139e0f10e12caeb17a1ed1ddb74ee7ddfd76dd196a7c6d99becd928ac60cad2bfd608b00b9319ed0a6fbc19b06307ce5",
+    "avatar": "/user-avatar-default.png",
+    "role": "admin"
+  },
+  {
+    "id": 2,
+    "username": "Medvedkin",
+    "password": "5c963b3f455c8fea153e1cc4be4294d6:4c2fb5d88d790caa78bc65508f13b463c61e26a1318ec90a2b55f6c5099d4bf3c978f40ef5b9283c79af149f9e93b91581517501e02a427e0d1dc1a06aea6abd",
+    "avatar": "/user-avatar-default.png",
+    "role": "admin"
+  }
+]

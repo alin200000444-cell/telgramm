@@ -1,29 +1,38 @@
 {
   "name": "human-messenger",
   "version": "1.0.0",
-  "description": "Мессенджер для людей на Electron",
+  "description": "Мессенджер для людей на Electron и Supabase",
   "main": "main.js",
-"scripts": {
-  "start": "node server.js"
-}
-
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "scripts": {
+    "start-server": "node server.js",
+    "start-electron": "electron .",
+    "build-win": "electron-builder --win"
+  },
   "dependencies": {
-    "bcryptjs": "^3.0.3",
+    "@capacitor/android": "^8.4.1",
+    "@capacitor/cli": "^8.4.1",
+    "@capacitor/core": "^8.4.1",
+    "cookie-session": "^2.1.1",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
-    "express-session": "^1.19.0",
-    "localtunnel": "^2.0.2",
-    "multer": "^2.1.1",
-    "socket.io": "^4.8.3",
-    "sqlite3": "^6.0.1"
+    "ws": "^8.21.0"
   },
   "devDependencies": {
-    "electron": "^31.3.1"
+    "electron": "^31.7.7",
+    "electron-builder": "^24.13.3"
   },
-  "optionalDependencies": {
-    "@cloudflare/kv-asset-handler": "^0.5.0"
+  "build": {
+    "appId": "com.humanmessenger.app",
+    "productName": "HumanMessenger",
+    "directories": {
+      "output": "dist"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
