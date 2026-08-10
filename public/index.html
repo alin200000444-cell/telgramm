@@ -11,39 +11,79 @@
     <div class="messenger-container">
         <div class="sidebar">
             <div class="sidebar-header">
-                <div style="display:flex; align-items:center; gap:10px;">
-                    <img id="my-avatar" src="" style="width:34px; height:34px; border-radius:50%; object-fit:cover; display:none;">
-                    <span id="user-display">Вы: ...</span>
+                <div style="display:flex;align-items:center;gap:10px;">
+                    <img id="my-avatar" src="" style="width:34px;height:34px;border-radius:50%;object-fit:cover;display:none;">
+                    <span id="user-display">Вы:...</span>
                 </div>
                 <a href="/logout" class="logout-btn">Выйти</a>
             </div>
             <ul id="users-list"></ul>
         </div>
         <div class="chat-area">
-            <div class="chat-header" id="chat-header-title">Выберите чат или собеседника слева</div>
+            <!-- ИСПРАВЛЕНО: Добавлен контейнер для кнопок звонка справа -->
+            <div class="chat-header" style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                <div id="chat-header-title">Выберите чат или собеседника слева</div>
+                <div id="call-buttons-container" style="display: none; gap: 15px; margin-right: 10px;">
+                    <button type="button" id="start-audio-call" style="background:none; border:none; font-size:20px; cursor:pointer; color:#3390ec;" title="Голосовой звонок">📞</button>
+                    <button type="button" id="start-video-call" style="background:none; border:none; font-size:20px; cursor:pointer; color:#3390ec;" title="Видеозвонок">📹</button>
+                </div>
+            </div>
             <ul id="messages"></ul>
-<form id="form" action="" style="display: none; position: relative;">
-    <button type="button" id="emoji-btn" style="background: none; color: #3390ec; margin: 0 5px; padding: 0; width: auto; cursor: pointer; font-size: 22px; border: none; outline: none;">😊</button>
-    <button type="button" id="video-note-btn" style="background: none; color: #3390ec; margin: 0 5px; padding: 0; width: auto; cursor: pointer; font-size: 22px; border: none; outline: none;">📹</button>
-    <input id="input" autocomplete="off" placeholder="Написать сообщение..." />
-    <button type="submit">Отправить</button>
-    
-    <div id="emoji-picker" style="display: none; position: absolute; bottom: 70px; left: 20px; background: #ffffff; border: 1px solid #e4e4e7; border-radius: 12px; box-shadow: 0 5px 20px rgba(0,0,0,0.15); width: 340px; height: 280px; overflow-y: auto; padding: 12px; z-index: 1000; box-sizing: border-box;">
-        <div style="font-size: 12px; color: #a1a1aa; margin-bottom: 8px; font-weight: bold; text-align: left;">Ваши эмодзи и мемы</div>
-        <div class="emoji-list" id="custom-emojis-container"></div>
+            <form id="form" action="" style="display:none;position:relative;">
+                <button type="button" id="emoji-btn" style="background:none;color:#3390ec;margin:05px;padding:0;width:auto;cursor:pointer;font-size:22px;border:none;outline:none;">😊</button>
+                <button type="button" id="video-note-btn" style="background:none;color:#3390ec;margin:05px;padding:0;width:auto;cursor:pointer;font-size:22px;border:none;outline:none;">📹</button>
+                <input id="input" autocomplete="off" placeholder="Написать сообщение..."/>
+                <button type="submit">Отправить</button>
+                <div id="emoji-picker" style="display:none;position:absolute;bottom:70px;left:20px;background:#ffffff;border:1pxsolid#e4e4e7;border-radius:12px;box-shadow:05px20pxrgba(0,0,0,0.15);width:340px;height:280px;overflow-y:auto;padding:12px;z-index:1000;box-sizing:border-box;">
+                    <div style="font-size:12px;color:#a1a1aa;margin-bottom:8px;font-weight:bold;text-align:left;">Ваши эмодзи и мемы</div>
+                    <div class="emoji-list" id="custom-emojis-container"></div>
+                </div>
+            </form>
+        </div>
     </div>
-</form>
 
+    <!-- ДОБАВЛЕНО: Интерфейс WebRTC звонка (перекрывает экран при вызове) -->
+    <div id="call-overlay" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; flex-direction: column; align-items: center; justify-content: center; color: white; font-family: sans-serif;">
+        <div id="call-status" style="font-size: 20px; margin-bottom: 10px; font-weight: bold;">Звонок...</div>
+        <div id="call-user" style="font-size: 16px; margin-bottom: 30px; color: #a1a1aa;">Собеседник</div>
+        
+        <div id="video-container" style="display: none; gap: 20px; margin-bottom: 30px; width: 100%; max-width: 800px; justify-content: center; flex-wrap: wrap;">
+            <div style="position: relative; width: 320px; height: 240px; background: #27272a; border-radius: 12px; overflow: hidden;">
+                <video id="local-video" autoplay muted playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                <span style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 4px; font-size: 12px;">Вы</span>
+            </div>
+            <div style="position: relative; width: 320px; height: 240px; background: #27272a; border-radius: 12px; overflow: hidden;">
+                <video id="remote-video" autoplay playsinline style="width: 100%; height: 100%; object-fit: cover;"></video>
+                <span id="remote-video-label" style="position: absolute; bottom: 10px; left: 10px; background: rgba(0,0,0,0.5); padding: 2px 8px; border-radius: 4px; font-size: 12px;">Собеседник</span>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 20px;">
+            <button type="button" id="accept-call-btn" style="display: none; background: #22c55e; color: white; border: none; padding: 12px 24px; border-radius: 24px; font-size: 16px; cursor: pointer; font-weight: bold;">Ответить</button>
+            <button type="button" id="hangup-call-btn" style="background: #ef4444; color: white; border: none; padding: 12px 24px; border-radius: 24px; font-size: 16px; cursor: pointer; font-weight: bold;">Сбросить</button>
         </div>
     </div>
 
 <script type="module">
+
+let localStream = null;
+let peerConnection = null;
+let currentCallWithUser = null;
+
+const rtcConfig = {
+    iceServers: [
+        { urls: 'stun:google.com' },
+        { urls: 'stun:google.com' }
+    ]
+};
+
     let currentUserId = null;
     let currentUsername = '';
     let currentUserRole = '';
     let activeChatUser = null;      
     let activeChatUsername = '';  
-    let customEmojisList = [];     
+    let customEmojisList = [];
+    
 
     function convertCustomEmojis(text) {
         let result = text;
@@ -225,7 +265,7 @@
                     const li = document.createElement('li');
                     
                     const img = document.createElement('img');
-                    img.src = user.avatar || '/user-avatar-default.png';
+                    img.src = user.avatar || '/user-avatar-default.jpg';
                     img.classList.add('user-avatar-modern');
                     
                     const nameSpan = document.createElement('span');
@@ -238,37 +278,48 @@
 
                     if (activeChatUser === user.username) li.classList.add('active');
 
-                    const openChat = () => {
-                        activeChatUser = user.username;
-                        activeChatUsername = user.username;
-                        document.querySelectorAll('#users-list li').forEach(el => el.classList.remove('active'));
-                        li.classList.add('active');
-                        
-                        chatHeaderTitle.innerHTML = `
-                            <div style="display:flex;align-items:center;gap:5px;width:100%;">
-                                <button type="button" class="back-to-list-btn" style="display:inline-flex;">←</button>
-                                <img src="${user.avatar || '/user-avatar-default.png'}" class="chat-header-avatar">
-                                <span style="font-size:16px;"><strong>${activeChatUsername}</strong></span>
-                            </div>`;
-                            
-                        const sidebar = document.querySelector('.sidebar');
-                        sidebar.classList.add('hide-mobile');
+const openChat = () => {
+    activeChatUser = user.username;
+    activeChatUsername = user.username;
+    document.querySelectorAll('#users-list li').forEach(el => el.classList.remove('active'));
+    li.classList.add('active');
+    
+    chatHeaderTitle.innerHTML = `
+        <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <button type="button" class="back-to-list-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #3390ec;">←</button>
+                <img src="${user.avatar || '/user-avatar-default.png'}" class="chat-header-avatar" style="width: 34px; height: 34px; border-radius: 50%; object-fit: cover;">
+                <span style="font-size: 16px;"><strong>${activeChatUsername}</strong></span>
+            </div>
+            <div style="display: flex; gap: 15px; margin-right: 15px;">
+                <button type="button" id="start-audio-call" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #3390ec;" title="Голосовой звонок">📞</button>
+                <button type="button" id="start-video-call" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #3390ec;" title="Видеозвонок">📹</button>
+            </div>
+        </div>`;
 
-                        const backBtn = chatHeaderTitle.querySelector('.back-to-list-btn');
-                        if (backBtn) {
-                            backBtn.addEventListener('click', (e) => {
-                                e.stopPropagation();
-                                sidebar.classList.remove('hide-mobile');
-                            });
-                            backBtn.addEventListener('touchstart', (e) => {
-                                e.stopPropagation();
-                                sidebar.classList.remove('hide-mobile');
-                            });
-                        }
+    // ОБЯЗАТЕЛЬНО: Сразу после innerHTML вешаем события вызова на эти новые кнопки
+    document.getElementById('start-audio-call').onclick = () => startCall(false);
+    document.getElementById('start-video-call').onclick = () => startCall(true);
 
-                        form.setAttribute('style', 'display: flex !important; position: relative;');
-                        loadChatHistory();
-                    };
+    const sidebar = document.querySelector('.sidebar');
+    sidebar.classList.add('hide-mobile');
+
+    const backBtn = chatHeaderTitle.querySelector('.back-to-list-btn');
+    if (backBtn) {
+        backBtn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            sidebar.classList.remove('hide-mobile');
+        });
+        backBtn.addEventListener('touchstart', (e) => {
+            e.stopPropagation();
+            sidebar.classList.remove('hide-mobile');
+        });
+    }
+
+    form.setAttribute('style', 'display: flex !important; position: relative;');
+    loadChatHistory();
+};
+
 
                     li.addEventListener('click', openChat);
                     li.addEventListener('touchstart', (e) => {
@@ -461,25 +512,153 @@
             messages.scrollTop = messages.scrollHeight;
         }
 
-        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const socket = new WebSocket(`${protocol}//${window.location.host}`);
+ const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+const socket = new WebSocket(`${protocol}//${window.location.host}`);
+
+// ДОБАВЬ ЭТОТ БЛОК: как только сокет открылся, сразу шлем серверу свой ник
+socket.onopen = function() {
+    if (currentUsername) {
+        socket.send(JSON.stringify({
+            type: 'register-username',
+            username: currentUsername
+        }));
+    }
+};
 
         socket.onmessage = function(event) {
             const payload = JSON.parse(event.data);
             
+            // --- 1. Обработка текстовых сообщений и стикеров ---
             if (payload.type === 'new-message') {
                 appendMessage(payload.data);
-            } else if (payload.type === 'message-deleted') {
+            } 
+            
+            // --- 2. Обработка удаления сообщений администратором ---
+            else if (payload.type === 'message-deleted') {
                 const msgElement = document.getElementById(`msg-${payload.id}`);
                 if (msgElement) {
                     msgElement.style.opacity = '0.3';
                     msgElement.innerHTML = '<em>Сообщение удалено администратором</em>';
                 }
             }
-        };
+            
+            // --- 3. Сигналы WebRTC звонков: Получение входящего вызова ---
+            else if (payload.type === 'call-offer') {
+                if (currentCallWithUser) { 
+                    sendSignal('call-hangup', payload.sender); 
+                    return; 
+                }
+                currentCallWithUser = payload.sender;
+                document.getElementById('call-user').textContent = currentCallWithUser;
+                document.getElementById('call-status').textContent = payload.isVideo ? "Входящий видеозвонок..." : "Входящий аудиозвонок...";
+                document.getElementById('video-container').style.display = payload.isVideo ? "flex" : "none";
+                document.getElementById('accept-call-btn').style.display = "inline-block";
+                document.getElementById('call-overlay').style.display = "flex";
+
+                // Логика нажатия кнопки «Ответить»
+                document.getElementById('accept-call-btn').onclick = async () => {
+                    document.getElementById('accept-call-btn').style.display = "none";
+                    document.getElementById('call-status').textContent = "Соединение...";
+                    try {
+                        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: payload.isVideo });
+                        document.getElementById('local-video').srcObject = localStream;
+                        initPeerConnection(payload.isVideo);
+                        await peerConnection.setRemoteDescription(new RTCSessionDescription(payload.offer));
+                        const answer = await peerConnection.createAnswer();
+                        await peerConnection.setLocalDescription(answer);
+                        sendSignal('call-answer', currentCallWithUser, { answer: answer });
+                        document.getElementById('call-status').textContent = "В разговоре";
+                    } catch (err) { 
+                        console.error(err); 
+                        endCall(); 
+                    }
+                };
+            } 
+            
+            // --- 4. Сигналы WebRTC звонков: Собеседник принял наш вызов ---
+            else if (payload.type === 'call-answer') {
+                if (peerConnection) {
+                    peerConnection.setRemoteDescription(new RTCSessionDescription(payload.answer));
+                    document.getElementById('call-status').textContent = "В разговоре";
+                }
+            } 
+            
+            // --- 5. Сигналы WebRTC звонков: Синхронизация сетевых путей (ICE) ---
+            else if (payload.type === 'ice-candidate') {
+                if (peerConnection && payload.candidate) {
+                    peerConnection.addIceCandidate(new RTCIceCandidate(payload.candidate))
+                        .catch(e => console.error(e));
+                }
+            } 
+            
+            // --- 6. Сигналы WebRTC звонков: Собеседник повесил трубку ---
+            else if (payload.type === 'call-hangup') {
+                if (peerConnection) peerConnection.close();
+                if (localStream) localStream.getTracks().forEach(track => track.stop());
+                peerConnection = null; 
+                localStream = null;
+                document.getElementById('local-video').srcObject = null;
+                document.getElementById('remote-video').srcObject = null;
+                document.getElementById('call-overlay').style.display = "none";
+                currentCallWithUser = null;
+                alert("Звонок завершен собеседником");
+            }
+        }; // Конец функции socket.onmessage
+
             
         setInterval(loadUsers, 10000);
-    }
+		        async function startCall(isVideo = false) {
+            if (!activeChatUser) return;
+            currentCallWithUser = activeChatUser;
+            document.getElementById('call-user').textContent = currentCallWithUser;
+            document.getElementById('call-status').textContent = "Исходящий вызов...";
+            document.getElementById('accept-call-btn').style.display = "none";
+            document.getElementById('call-overlay').style.display = "flex";
+            try {
+                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: isVideo });
+                document.getElementById('local-video').srcObject = localStream;
+                document.getElementById('video-container').style.display = isVideo ? "flex" : "none";
+                initPeerConnection(isVideo);
+                const offer = await peerConnection.createOffer();
+                await peerConnection.setLocalDescription(offer);
+                sendSignal('call-offer', currentCallWithUser, { offer: offer, isVideo: isVideo });
+            } catch (err) {
+                console.error(err);
+                alert("Не удалось получить доступ к камере или микрофону");
+                endCall();
+            }
+        }
+
+        function initPeerConnection(isVideo) {
+            peerConnection = new RTCPeerConnection(rtcConfig);
+            localStream.getTracks().forEach(track => peerConnection.addTrack(track, localStream));
+            peerConnection.onicecandidate = (event) => {
+                if (event.candidate) sendSignal('ice-candidate', currentCallWithUser, { candidate: event.candidate });
+            };
+            peerConnection.ontrack = (event) => {
+                document.getElementById('remote-video').srcObject = event.streams;
+                document.getElementById('remote-video-label').textContent = currentCallWithUser;
+            };
+        }
+
+        function endCall() {
+            if (currentCallWithUser) sendSignal('call-hangup', currentCallWithUser);
+            if (peerConnection) { peerConnection.close(); peerConnection = null; }
+            if (localStream) { localStream.getTracks().forEach(track => track.stop()); localStream = null; }
+            document.getElementById('local-video').srcObject = null;
+            document.getElementById('remote-video').srcObject = null;
+            document.getElementById('call-overlay').style.display = "none";
+            currentCallWithUser = null;
+        }
+
+        document.getElementById('hangup-call-btn').addEventListener('click', endCall);
+
+        function sendSignal(type, targetUser, extraData = {}) {
+            if (socket && socket.readyState === WebSocket.OPEN) {
+                socket.send(JSON.stringify({ type: type, targetUser: targetUser, sender: currentUsername, ...extraData }));
+            }
+        }
+	}
 </script>
 </body>
 </html>

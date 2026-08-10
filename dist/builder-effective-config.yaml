@@ -1,0 +1,12 @@
+directories:
+  output: dist
+  buildResources: build
+appId: com.humanmessenger.app
+productName: HumanMessenger
+win:
+  target: nsis
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+files: []
+electronVersion: 31.7.7

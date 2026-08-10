@@ -71,7 +71,7 @@ app.get('/api/check-auth', (req, res) => {
 
 app.post('/api/register', async (req, res) => {
   const { username, password, avatarBase64 } = req.body;
-  const avatarPath = avatarBase64 || '/user-avatar-default.png';
+  const avatarPath = avatarBase64 || 'https://i.pinimg.com/736x/0f/fa/da/0ffada0a5c2889cad833cd1d16c55d37.jpg';
 
   if (!username || !password) {
     return res.status(400).json({ message: 'Заполните все поля' });
@@ -153,9 +153,11 @@ app.post('/api/send-message', async (req, res) => {
 });
 
 app.post('/api/delete-message', async (req, res) => {
+  // ИСПРАВЛЕНО: Добавлен корректный возврат ошибки, если пользователь не админ
   if (!req.session || !req.session.user || req.session.user.role !== 'admin') {
-    return res.status(403).json({ message: 'Нет прав' });
+    return res.status(403).json({ message: 'Доступ запрещен. Только для администраторов.' });
   }
+  
   const { msgId } = req.body;
 
   let messages = readData(MESSAGES_FILE);
@@ -171,6 +173,7 @@ app.post('/api/delete-message', async (req, res) => {
   broadcast({ type: 'message-deleted', id: msgId });
   res.status(200).json({ success: true });
 });
+
 
 app.get('/api/emojis', (req, res) => {
   const emojisDir = path.join(__dirname, 'public', 'emojis');
@@ -212,6 +215,62 @@ app.post('/api/upload-video', (req, res) => {
 
 // Разрешаем раздачу статических файлов
 app.use(express.static(path.join(__dirname, 'public')));
+// ========================================================
+// ЛОГИКА МАРШРУТИЗАЦИИ ЗВОНКОВ ЧЕРЕЗ WEBSOCKET НА БЭКЕНДЕ
+// ========================================================
+wss.on('connection', (ws) => {
+  ws.username = null;
+
+  ws.on('message', (message) => {
+    try {
+      const payload = JSON.parse(message);
+
+      // 1. Ловим стартовый пакет регистрации имени сокета
+      if (payload.type === 'register-username' && payload.username) {
+        ws.username = payload.username;
+        console.log(`Сокет успешно привязан к пользователю: ${ws.username}`);
+        return; // Выходим из обработчика
+      }
+
+      // Резервный перехват имени (на всякий случай)
+      if (!ws.username) {
+        if (payload.sender) ws.username = payload.sender;
+        else if (payload.data && payload.data.username) ws.username = payload.data.username;
+        else if (payload.username) ws.username = payload.username;
+      }
+
+      // 2. Маршрутизация звонков
+      const callTypes = ['call-offer', 'call-answer', 'ice-candidate', 'call-hangup'];
+      if (callTypes.includes(payload.type)) {
+        const targetClient = [...wss.clients].find(client => client.username === payload.targetUser);
+        
+        if (targetClient && targetClient.readyState === WebSocket.OPEN) {
+          targetClient.send(JSON.stringify({
+            type: payload.type,
+            sender: payload.sender || ws.username, 
+            isVideo: payload.isVideo,     
+            offer: payload.offer,         
+            answer: payload.answer,       
+            candidate: payload.candidate  
+          }));
+        }
+      }
+    } catch (err) {
+      console.error("Ошибка обработки пакета сокета на сервере:", err);
+    }
+  });
+
+  ws.on('close', () => {
+    if (ws.username) {
+      wss.clients.forEach(client => {
+        if (client.readyState === WebSocket.OPEN) {
+          client.send(JSON.stringify({ type: 'call-hangup', sender: ws.username }));
+        }
+      });
+    }
+  });
+});
+
 
 // ИСПРАВЛЕНИЕ 1: Динамический порт для Railway + удаление привязки к '0.0.0.0' (Railway настроит это сам)
 const PORT = process.env.PORT || 3000;

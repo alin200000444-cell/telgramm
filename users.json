@@ -2,15 +2,15 @@
   {
     "id": 1,
     "username": "VADMIN",
-    "password": "39bb64427cab4d1bb41cfa0e21193198:dc15acd88c3cf21a8bb502488929e268139e0f10e12caeb17a1ed1ddb74ee7ddfd76dd196a7c6d99becd928ac60cad2bfd608b00b9319ed0a6fbc19b06307ce5",
-    "avatar": "/user-avatar-default.png",
+    "password": "e89346481da493bd01c8ef067f32f427:20452a0e7d9972b5cdb88b4b416c4293f694eeb9dd4c181b3bb5a454c3312a8d8db998589b55900fb761dce221beaa755edcbc81b9084b6f1200ee49809602ac",
+    "avatar": "https://i.pinimg.com/736x/0f/fa/da/0ffada0a5c2889cad833cd1d16c55d37.jpg",
     "role": "admin"
   },
   {
     "id": 2,
-    "username": "Medvedkin",
-    "password": "5c963b3f455c8fea153e1cc4be4294d6:4c2fb5d88d790caa78bc65508f13b463c61e26a1318ec90a2b55f6c5099d4bf3c978f40ef5b9283c79af149f9e93b91581517501e02a427e0d1dc1a06aea6abd",
-    "avatar": "/user-avatar-default.png",
-    "role": "admin"
+    "username": "VADMIN1",
+    "password": "e248157003d9fd105238253dd43dadb0:57d605dff2e680dc067b5a8dc4971d3ad5ddc84d94e5ced645fd1d8a93ccd12b854749e30c03c6abf103c472f208706a9a7080469896fc075dbf8728d53a5f80",
+    "avatar": "https://i.pinimg.com/736x/0f/fa/da/0ffada0a5c2889cad833cd1d16c55d37.jpg",
+    "role": "user"
   }
 ]
